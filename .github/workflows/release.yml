@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-and-release:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest]
+        node: [20]
+        python: [3.11]
+    runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CSC_IDENTITY_AUTO_DISCOVERY: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install uv (macOS/Linux)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Install uv (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm https://astral.sh/uv/install.ps1 | iex
+          echo "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Backend deps
+        shell: bash
+        run: |
+          cd backend
+          uv sync
+
+      - name: Build backend (PyInstaller)
+        shell: bash
+        run: |
+          cd backend
+          uv run build.py
+
+      - name: Install frontend deps
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Build and publish (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: npx electron-builder --win --publish always
+
+      - name: Build and publish (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: npx electron-builder --mac --publish always
