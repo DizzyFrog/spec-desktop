@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import './App.css'
 
-function App(): JSX.Element {
+function App() {
   const [status, setStatus] = useState<string>('请选择 Excel 文件开始')
   const [loading, setLoading] = useState<boolean>(false)
   const [progress, setProgress] = useState<number>(0)

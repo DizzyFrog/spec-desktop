@@ -23,8 +23,10 @@ function startBackendServer(): Promise<void> {
 
     // 确定 Python 命令和参数
     // 开发环境：使用 uv run uvicorn 启动（禁用 reload 避免多进程问题）
-    // 生产环境：运行打包后的可执行文件
-    const pythonCmd = isDev ? 'uv' : join(process.resourcesPath, 'backend', 'spec-backend')
+    // 生产环境：运行打包后的可执行文件（onefile 模式）
+    const pythonCmd = isDev
+      ? 'uv'
+      : join(process.resourcesPath, 'backend', 'spec-backend')
     const args = isDev
       ? ['run', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000']
       : []

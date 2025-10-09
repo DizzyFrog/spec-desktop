@@ -48,7 +48,8 @@ def build_backend():
         "--exclude-module", "pytest",
         "--exclude-module", "tkinter",
         "--exclude-module", "matplotlib",
-        "--exclude-module", "numpy",
+        # 注意：不排除 numpy，因为 pandas 依赖它
+        # "--exclude-module", "numpy",
         "--exclude-module", "PIL",
         # 添加数据文件
         f"--add-data={app_dir}{os.pathsep}app",
@@ -61,11 +62,16 @@ def build_backend():
     print(f"打包模式: {'onedir' if use_onedir else 'onefile'}")
 
     # 执行打包命令
-    result = subprocess.run(cmd, cwd=backend_dir)
+    result = subprocess.run(cmd, cwd=backend_dir, env={**os.environ, 'PYTHONOPTIMIZE': '1'})
 
     if result.returncode == 0:
+        # 确保 dist 目录在 backend 下
+        expected_dist = backend_dir / "dist"
+        if not expected_dist.exists():
+            expected_dist.mkdir(parents=True)
+
         print(f"\n✅ 打包成功!")
-        print(f"可执行文件位置: {dist_dir / output_name}")
+        print(f"可执行文件位置: {expected_dist / output_name}")
     else:
         print("\n❌ 打包失败!")
         sys.exit(1)

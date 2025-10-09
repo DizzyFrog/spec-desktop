@@ -19,11 +19,11 @@ files:
 
 # 将 Python 后端打包
 extraResources:
-  # 生产环境：打包后的可执行文件
-  - from: backend/dist/spec-backend
-    to: backend/
+  # 生产环境：打包后的可执行文件（onefile 单文件模式）
+  - from: backend/dist
+    to: backend
     filter:
-      - 'spec-backend*'
+      - spec-backend
   # 开发模式需要的 Python 源代码
   - from: backend/app
     to: backend/app
