@@ -1,48 +1,58 @@
 """
-AI 服务集成
-用于调用 AI API 生成内容
+AI 服务集成 - 阿里云通义千问
+简化版本，用于生成功能描述
 """
-from typing import Dict, Any, Optional
+from typing import Optional
 import os
+from openai import OpenAI
 
 
 class AIService:
-    """AI 服务类"""
+    """AI 服务类 - 使用阿里云通义千问"""
 
-    def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.getenv("OPENAI_API_KEY")
+    def __init__(self):
+        self.base_url = os.getenv("AI_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+        self.api_key = os.getenv("AI_API_KEY", "")
+        self.model = os.getenv("AI_MODEL", "qwen-long")
 
-    async def generate_content(self, prompt: str, context: Dict[str, Any]) -> str:
+        if self.api_key:
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url
+            )
+        else:
+            self.client = None
+
+    def generate_description(self, feature_name: str, processes: list[str]) -> str:
         """
-        生成文档内容
+        生成功能描述
 
         Args:
-            prompt: 提示词
-            context: 上下文数据
+            feature_name: 功能名称
+            processes: 功能过程列表
 
         Returns:
-            生成的内容
+            生成的功能描述（100字左右）
         """
-        # TODO: 实现 AI API 调用
-        # 可以使用 OpenAI、Claude 等 API
-        return "AI 生成的内容（待实现）"
+        if not self.client:
+            return f"这是关于{feature_name}的功能模块，主要包含{len(processes)}个功能过程。"
 
-    async def generate_mermaid_syntax(self, requirements: list) -> str:
-        """
-        生成 Mermaid 图表语法
+        prompt = f"""现在有一个功能需求:{feature_name},其功能过程有:{', '.join(processes)}。
+你的任务：根据需求和功能过程，写出100字左右的功能概述"""
 
-        Args:
-            requirements: 需求列表
+        try:
+            completion = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {'role': 'system', 'content': '你是软件需求工程师，负责需求分析'},
+                    {'role': 'user', 'content': prompt}
+                ]
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            print(f"AI 调用失败: {e}")
+            return f"这是关于{feature_name}的功能模块，主要包含{len(processes)}个功能过程。"
 
-        Returns:
-            Mermaid 语法字符串
-        """
-        # TODO: 根据需求生成 Mermaid 时序图或流程图
-        return """
-graph TD
-    A[开始] --> B[需求分析]
-    B --> C[设计方案]
-    C --> D[开发实现]
-    D --> E[测试验证]
-    E --> F[上线部署]
-"""
+
+# 全局实例
+ai_service = AIService()

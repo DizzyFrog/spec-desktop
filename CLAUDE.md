@@ -248,13 +248,62 @@ spec-desktop/
    # 会自动：1) uv run build.py 打包后端 2) 构建前端 3) electron-builder 打包
    ```
 
-## Future Development Areas
+## 功能实现状态
 
-Based on [abstract-spec.md](abstract-spec.md), the following need implementation:
-1. Excel file upload UI and handling (Renderer)
-2. IPC handlers for file operations (Main process)
-3. Mermaid diagram rendering with `@mermaid-js/mermaid-cli` (Renderer/Main)
-4. Progress tracking and status display (Renderer)
-5. Word document download/preview functionality (Renderer)
-6. AI service integration in backend (Backend services)
-7. Complete Excel parsing logic (Backend services)
+### ✅ 已完成功能
+
+1. **Excel 解析服务** ([backend/app/services/excel_parser.py](backend/app/services/excel_parser.py))
+   - 读取 Excel 文件（功能点拆分表）
+   - 解析需求数据为结构化格式
+   - 处理合并单元格和数据验证
+
+2. **AI 服务集成** ([backend/app/services/ai_service.py](backend/app/services/ai_service.py))
+   - 接入阿里云通义千问（Qwen）
+   - 自动生成功能描述（100字）
+   - 配置文件: [backend/.env](backend/.env)
+
+3. **Mermaid 图表生成** ([src/main/mermaid.ts](src/main/mermaid.ts))
+   - **本地化**：使用 `@mermaid-js/mermaid-cli`
+   - 结构图（flowchart）: 显示功能模块关系
+   - 流程图（sequenceDiagram）: 显示角色交互
+   - 图片缓存机制
+
+4. **Word 文档生成** ([backend/app/services/docx_writer.py](backend/app/services/docx_writer.py))
+   - 使用 python-docx 生成 Word 文档
+   - 插入标题、描述、图片
+   - 自定义样式和格式
+
+5. **完整工作流** ([backend/app/services/document_service.py](backend/app/services/document_service.py))
+   - 步骤 1: 处理 Excel → 返回结构化数据
+   - 步骤 2: 前端生成 Mermaid 图片（本地）
+   - 步骤 3: 后端生成 Word 文档
+
+6. **前端 UI** ([src/renderer/src/App.tsx](src/renderer/src/App.tsx))
+   - 文件选择对话框
+   - 实时进度显示
+   - 状态提示和错误处理
+   - 现代化界面设计
+
+7. **IPC 通信** ([src/main/ipc-handlers.ts](src/main/ipc-handlers.ts))
+   - 文件选择
+   - Excel 处理
+   - Mermaid 图片生成（本地）
+   - Word 文档生成和保存
+
+## 使用流程
+
+1. **启动应用**: `npm run dev`
+2. **点击"选择 Excel 文件"**
+3. **选择包含"功能点拆分表"的 Excel 文件**
+4. **自动处理**:
+   - 解析 Excel → AI 生成描述 → 生成图表 → 输出 Word
+5. **选择保存位置**
+6. **完成！**
+
+## 核心特性
+
+- ✅ **0 服务器成本**: 完全本地化，Mermaid 图表在用户电脑生成
+- ✅ **AI 驱动**: 使用阿里云通义千问生成功能描述
+- ✅ **简化代码**: 去除冗余，保留核心业务逻辑
+- ✅ **现代化架构**: Electron + React + Python + uv
+- ✅ **完整工作流**: 从 Excel 到 Word 一键生成

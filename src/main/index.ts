@@ -1,8 +1,8 @@
 import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { spawn, ChildProcess } from 'child_process'
-import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
+import { registerIpcHandlers } from './ipc-handlers'
 
 // 后端服务进程
 let backendProcess: ChildProcess | null = null
@@ -16,15 +16,18 @@ function startBackendServer(): Promise<void> {
     console.log('正在启动后端服务...')
 
     // 确定后端路径
-    const backendPath = is.dev
+    const isDev = !app.isPackaged
+    const backendPath = isDev
       ? join(__dirname, '../../backend')
       : join(process.resourcesPath, 'backend')
 
     // 确定 Python 命令和参数
-    // 开发环境：使用 uv run 启动
+    // 开发环境：使用 uv run uvicorn 启动（禁用 reload 避免多进程问题）
     // 生产环境：运行打包后的可执行文件
-    const pythonCmd = is.dev ? 'uv' : join(process.resourcesPath, 'backend', 'spec-backend')
-    const args = is.dev ? ['run', 'main.py'] : []
+    const pythonCmd = isDev ? 'uv' : join(process.resourcesPath, 'backend', 'spec-backend')
+    const args = isDev
+      ? ['run', 'uvicorn', 'app.main:app', '--host', '127.0.0.1', '--port', '8000']
+      : []
 
     // 启动后端进程
     backendProcess = spawn(pythonCmd, args, {
@@ -100,7 +103,7 @@ function createWindow(): void {
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
-  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
@@ -112,14 +115,20 @@ function createWindow(): void {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(async () => {
   // Set app user model id for windows
-  electronApp.setAppUserModelId('com.electron')
+  app.setName('spec-desktop')
 
   // Default open or close DevTools by F12 in development
   // and ignore CommandOrControl + R in production.
-  // see https://github.com/alex8088/electron-toolkit/tree/master/packages/utils
-  app.on('browser-window-created', (_, window) => {
-    optimizer.watchWindowShortcuts(window)
-  })
+  if (!app.isPackaged) {
+    app.on('browser-window-created', (_, window) => {
+      window.webContents.on('before-input-event', (event, input) => {
+        if (input.key === 'F12') {
+          window.webContents.toggleDevTools()
+          event.preventDefault()
+        }
+      })
+    })
+  }
 
   // 启动后端服务
   try {
@@ -129,8 +138,8 @@ app.whenReady().then(async () => {
     console.error('后端服务启动失败:', error)
   }
 
-  // IPC test
-  ipcMain.on('ping', () => console.log('pong'))
+  // 注册 IPC 处理器
+  registerIpcHandlers()
 
   createWindow()
 

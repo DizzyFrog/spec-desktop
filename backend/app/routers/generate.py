@@ -1,59 +1,80 @@
 """
-文档生成相关路由
+文档生成相关路由 - 简化版
 处理需求文档生成逻辑
 """
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from typing import Dict, Optional
+from typing import Dict, List, Any, Optional
+
+from app.services.document_service import document_service
 
 router = APIRouter()
 
 
-class GenerateRequest(BaseModel):
-    """文档生成请求模型"""
+class ProcessExcelRequest(BaseModel):
+    """处理 Excel 请求"""
     file_path: str
-    output_path: Optional[str] = None
 
 
-@router.post("/document")
-async def generate_document(request: GenerateRequest) -> Dict:
+class GenerateWordRequest(BaseModel):
+    """生成 Word 请求"""
+    chapters: List[Dict[str, Any]]
+    image_mapping: Dict[str, str]
+    output_filename: Optional[str] = "需求说明书.docx"
+
+
+@router.post("/process-excel")
+async def process_excel(request: ProcessExcelRequest) -> Dict:
     """
-    生成需求说明书文档
+    步骤1: 处理 Excel 文件，返回结构化数据
 
     Args:
-        request: 包含输入文件路径和输出路径的请求
+        request: 包含 Excel 文件路径
 
     Returns:
-        生成结果信息
+        {
+            "success": true,
+            "chapters": [
+                {
+                    "name": "功能需求名称",
+                    "description": "AI 生成的描述",
+                    "role": "角色A，角色B，角色C",
+                    "functions": ["功能1", "功能2"],
+                    "features": [...]
+                }
+            ]
+        }
     """
-    # TODO: 实现文档生成逻辑
-    # 1. 解析 Excel 文件
-    # 2. 调用 AI 生成内容
-    # 3. 生成 Mermaid 图表语法
-    # 4. 创建 Word 文档
-
-    return {
-        "success": True,
-        "message": "文档生成功能待实现",
-        "file_path": request.file_path
-    }
+    try:
+        result = await document_service.process_excel(request.file_path)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.post("/mermaid")
-async def generate_mermaid(data: Dict) -> Dict:
+@router.post("/generate-word")
+async def generate_word(request: GenerateWordRequest) -> Dict:
     """
-    生成 Mermaid 图表语法
+    步骤2: 生成 Word 文档（前端已生成 Mermaid 图片）
 
     Args:
-        data: 需求数据
+        request: 包含章节数据和图片映射
 
     Returns:
-        Mermaid 语法字符串
+        {
+            "success": true,
+            "output_path": "/path/to/需求说明书.docx"
+        }
     """
-    # TODO: 实现 Mermaid 图表生成逻辑
-
-    return {
-        "success": True,
-        "mermaid_syntax": "graph TD\n    A[开始] --> B[结束]",
-        "message": "Mermaid 生成功能待实现"
-    }
+    try:
+        output_path = document_service.generate_word(
+            request.chapters,
+            request.image_mapping,
+            request.output_filename
+        )
+        return {
+            "success": True,
+            "output_path": output_path
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
