@@ -6,7 +6,6 @@ import { ipcMain, dialog } from 'electron'
 import { promises as fs } from 'fs'
 import axios from 'axios'
 import { mermaidGenerator } from './mermaid'
-import path from 'path'
 
 const BACKEND_URL = 'http://127.0.0.1:8000'
 

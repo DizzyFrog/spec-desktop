@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow } from 'electron'
 import { join } from 'path'
 import { spawn, ChildProcess } from 'child_process'
 import icon from '../../resources/icon.png?asset'
