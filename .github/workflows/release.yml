@@ -11,6 +11,7 @@ permissions:
 
 jobs:
   build-and-release:
+    timeout-minutes: 60
     strategy:
       matrix:
         os: [macos-latest, windows-latest]
@@ -34,6 +35,17 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+
+      - name: Cache PyInstaller builds
+        uses: actions/cache@v4
+        with:
+          path: |
+            backend/build
+            backend/dist
+            ~/.cache/pyinstaller
+          key: ${{ runner.os }}-pyinstaller-${{ hashFiles('backend/pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pyinstaller-
 
       - name: Install uv (macOS/Linux)
         if: runner.os != 'Windows'

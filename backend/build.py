@@ -41,6 +41,10 @@ def build_backend():
         "--onefile",  # 打包成单个文件
         "--clean",
         "--noconfirm",
+        # 排除不需要的模块以减少体积和加速打包
+        "--exclude-module", "pytest",
+        "--exclude-module", "tkinter",
+        "--exclude-module", "matplotlib",
         # 添加数据文件
         f"--add-data={app_dir}{os.pathsep}app",
         # 隐藏控制台窗口（可选）
