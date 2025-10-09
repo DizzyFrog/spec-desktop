@@ -1,0 +1,32 @@
+[project]
+name = "spec-backend"
+version = "1.0.0"
+description = "需求说明书生成工具后端服务 - FastAPI Backend"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.115.5",
+    "uvicorn[standard]>=0.34.0",
+    "python-multipart>=0.0.20",
+    "openpyxl>=3.1.5",
+    "python-docx>=1.1.2",
+    "httpx>=0.28.1",
+    "aiohttp>=3.11.11",
+    "pydantic>=2.10.4",
+    "pydantic-settings>=2.7.0",
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pyinstaller>=6.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = [
+    "pyinstaller>=6.11.1",
+]

@@ -1,0 +1,25 @@
+# FastAPI 核心依赖
+fastapi==0.115.5
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
+
+# Excel 处理
+openpyxl==3.1.5
+
+# Word 文档生成
+python-docx==1.1.2
+
+# HTTP 客户端（用于调用 AI API）
+httpx==0.28.1
+aiohttp==3.11.11
+
+# 数据验证
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# 环境变量管理
+python-dotenv==1.0.1
+
+# AI API 客户端（可选）
+# openai==1.57.4
+# anthropic==0.42.0
