@@ -81,6 +81,9 @@ jobs:
 
       - name: Build backend (PyInstaller)
         shell: bash
+        timeout-minutes: 30
+        env:
+          PYINSTALLER_ONEDIR: "true"
         run: |
           cd backend
           uv run build.py

@@ -33,18 +33,23 @@ def build_backend():
 
     print("开始打包后端服务（使用 uv 环境）...")
 
+    # 使用环境变量判断是否使用 onedir 模式（CI 环境下更快）
+    use_onedir = os.environ.get("PYINSTALLER_ONEDIR", "false").lower() == "true"
+
     # 使用 uv run 执行 pyinstaller
     cmd = [
         "uv", "run",
         "pyinstaller",
         "--name", "spec-backend",
-        "--onefile",  # 打包成单个文件
+        "--onedir" if use_onedir else "--onefile",  # CI 环境用 onedir 加速
         "--clean",
         "--noconfirm",
         # 排除不需要的模块以减少体积和加速打包
         "--exclude-module", "pytest",
         "--exclude-module", "tkinter",
         "--exclude-module", "matplotlib",
+        "--exclude-module", "numpy",
+        "--exclude-module", "PIL",
         # 添加数据文件
         f"--add-data={app_dir}{os.pathsep}app",
         # 隐藏控制台窗口（可选）
@@ -52,6 +57,8 @@ def build_backend():
         # 主入口文件
         str(app_dir / "main.py")
     ]
+
+    print(f"打包模式: {'onedir' if use_onedir else 'onefile'}")
 
     # 执行打包命令
     result = subprocess.run(cmd, cwd=backend_dir)
