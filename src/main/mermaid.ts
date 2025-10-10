@@ -7,12 +7,39 @@ import { promises as fs } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
 import crypto from 'crypto'
+import { app } from 'electron'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const puppeteer = require('puppeteer')
 
 export class MermaidGenerator {
   private cacheDir: string
 
   constructor(cacheDir?: string) {
     this.cacheDir = cacheDir || join(tmpdir(), 'spec-desktop-cache')
+  }
+
+  /**
+   * 获取 mmdc CLI 脚本路径（避免依赖 .bin）
+   */
+  private getMmdcPath(): string {
+    if (app.isPackaged) {
+      // 生产环境：直接调用 mermaid-cli 的 CLI 脚本
+      const cliPath = join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'node_modules',
+        '@mermaid-js',
+        'mermaid-cli',
+        'dist',
+        'cli.cjs'
+      )
+      console.log('[Mermaid] 生产环境 mermaid-cli 路径:', cliPath)
+      return cliPath
+    } else {
+      // 开发环境：使用 npx
+      console.log('[Mermaid] 开发环境使用 npx mmdc')
+      return 'mmdc'
+    }
   }
 
   /**
@@ -59,12 +86,32 @@ export class MermaidGenerator {
     await fs.writeFile(tempMmdPath, mermaidCode, 'utf-8')
 
     return new Promise((resolve, reject) => {
-      // 使用 npx mmdc 命令生成图片
-      const mmdc = spawn('npx', ['mmdc', '-i', tempMmdPath, '-o', finalPath], {
-        shell: true
+      // 获取 mmdc 命令路径
+      const mmdcPath = this.getMmdcPath()
+      const isPackaged = app.isPackaged
+
+      console.log('[Mermaid] 开始生成图片:', { mmdcPath, isPackaged, tempMmdPath, finalPath })
+
+      // 生产环境：用 Electron 的 Node 运行 cli.cjs，避免 PATH/.bin 问题；开发环境：使用 npx mmdc
+      const command = isPackaged ? process.execPath : 'npx'
+      const args = isPackaged
+        ? [mmdcPath, '-i', tempMmdPath, '-o', finalPath]
+        : ['mmdc', '-i', tempMmdPath, '-o', finalPath]
+
+      const mmdc = spawn(command, args, {
+        shell: true,
+        env: {
+          ...process.env,
+          ELECTRON_RUN_AS_NODE: '1'
+        }
       })
 
       let stderr = ''
+      let stdout = ''
+
+      mmdc.stdout?.on('data', (data) => {
+        stdout += data.toString()
+      })
 
       mmdc.stderr?.on('data', (data) => {
         stderr += data.toString()
@@ -75,18 +122,20 @@ export class MermaidGenerator {
         try {
           await fs.unlink(tempMmdPath)
         } catch (error) {
-          console.error('删除临时文件失败:', error)
+          console.error('[Mermaid] 删除临时文件失败:', error)
         }
 
         if (code === 0) {
-          console.log('Mermaid 图片生成成功:', finalPath)
+          console.log('[Mermaid] 图片生成成功:', finalPath)
           resolve(finalPath)
         } else {
-          reject(new Error(`Mermaid 生成失败: ${stderr}`))
+          console.error('[Mermaid] 生成失败:', { code, stdout, stderr })
+          reject(new Error(`Mermaid 生成失败 (code ${code}): ${stderr || stdout}`))
         }
       })
 
       mmdc.on('error', (error) => {
+        console.error('[Mermaid] 进程错误:', error)
         reject(error)
       })
     })

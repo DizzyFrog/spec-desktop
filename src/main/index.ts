@@ -1,8 +1,9 @@
-import { app, shell, BrowserWindow } from 'electron'
+import { app, shell, BrowserWindow, Menu } from 'electron'
 import { join } from 'path'
 import { spawn, ChildProcess } from 'child_process'
 import icon from '../../resources/icon.png?asset'
 import { registerIpcHandlers } from './ipc-handlers'
+import { logger } from './logger'
 
 // 后端服务进程
 let backendProcess: ChildProcess | null = null
@@ -11,9 +12,9 @@ const BACKEND_PORT = 8000
 /**
  * 启动 Python 后端服务
  */
-function startBackendServer(): Promise<void> {
+function    startBackendServer(): Promise<void> {
   return new Promise((resolve, reject) => {
-    console.log('正在启动后端服务...')
+    logger.log('正在启动后端服务...')
 
     // 确定后端路径
     const isDev = !app.isPackaged
@@ -39,7 +40,7 @@ function startBackendServer(): Promise<void> {
     })
 
     backendProcess.stdout?.on('data', (data) => {
-      console.log(`[Backend] ${data.toString()}`)
+      logger.log(`[Backend] ${data.toString()}`)
       // 检测到服务启动成功
       if (data.toString().includes('Uvicorn running on') || data.toString().includes('Application startup complete')) {
         resolve()
@@ -47,16 +48,16 @@ function startBackendServer(): Promise<void> {
     })
 
     backendProcess.stderr?.on('data', (data) => {
-      console.error(`[Backend Error] ${data.toString()}`)
+      logger.error(`[Backend Error] ${data.toString()}`)
     })
 
     backendProcess.on('error', (error) => {
-      console.error('后端启动失败:', error)
+      logger.error('后端启动失败:', error)
       reject(error)
     })
 
     backendProcess.on('close', (code) => {
-      console.log(`后端进程退出，代码: ${code}`)
+      logger.log(`后端进程退出，代码: ${code}`)
       backendProcess = null
     })
 
@@ -74,7 +75,7 @@ function startBackendServer(): Promise<void> {
  */
 function stopBackendServer(): void {
   if (backendProcess) {
-    console.log('正在停止后端服务...')
+    logger.log('正在停止后端服务...')
     backendProcess.kill()
     backendProcess = null
   }
@@ -95,7 +96,13 @@ function createWindow(): void {
   })
 
   mainWindow.on('ready-to-show', () => {
+    logger.log('[Main] 窗口准备就绪，显示窗口')
     mainWindow.show()
+  })
+
+  // 添加加载失败的处理
+  mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+    logger.error('[Main] 页面加载失败:', errorCode, errorDescription)
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -105,8 +112,11 @@ function createWindow(): void {
 
   // HMR for renderer base on electron-vite cli.
   // Load the remote URL for development or the local html file for production.
-  if (!app.isPackaged && process.env['ELECTRON_RENDERER_URL']) {
-    mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+  const rendererUrl = !app.isPackaged && process.env['ELECTRON_RENDERER_URL']
+  logger.log('[Main] 加载 Renderer:', rendererUrl || join(__dirname, '../renderer/index.html'))
+
+  if (rendererUrl) {
+    mainWindow.loadURL(rendererUrl)
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
@@ -132,17 +142,26 @@ app.whenReady().then(async () => {
     })
   }
 
-  // 启动后端服务
-  try {
-    await startBackendServer()
-    console.log(`后端服务已启动，运行在 http://127.0.0.1:${BACKEND_PORT}`)
-  } catch (error) {
-    console.error('后端服务启动失败:', error)
-  }
+  // 启动后端服务（非阻塞）
+  logger.log('[Main] 应用启动中...')
+  logger.log('[Main] 是否打包:', app.isPackaged)
+  logger.log('[Main] 资源路径:', app.isPackaged ? process.resourcesPath : 'N/A')
+
+  startBackendServer()
+    .then(() => {
+      logger.log(`[Main] 后端服务已启动，运行在 http://127.0.0.1:${BACKEND_PORT}`)
+    })
+    .catch((error) => {
+      logger.error('[Main] 后端服务启动失败，应用将继续运行但功能受限:', error)
+      // 显示错误对话框（可选）
+      // dialog.showErrorBox('后端服务启动失败', '部分功能可能无法使用，请检查日志')
+    })
 
   // 注册 IPC 处理器
   registerIpcHandlers()
 
+  // 立即创建窗口（不等待后端启动）
+  logger.log('[Main] 创建主窗口...')
   createWindow()
 
   app.on('activate', function () {

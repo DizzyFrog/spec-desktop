@@ -32,6 +32,9 @@ extraResources:
 
 asarUnpack:
   - resources/**
+  - node_modules/@mermaid-js/**
+  - node_modules/puppeteer-core/**
+  - node_modules/puppeteer/**
 win:
   executableName: spec-desktop
 nsis:
@@ -40,6 +43,9 @@ nsis:
   uninstallDisplayName: ${productName}
   createDesktopShortcut: always
 mac:
+  identity: null  # 跳过签名，用于内部测试
+  target:
+    - zip  # 只生成 ZIP，不生成 DMG
   entitlementsInherit: build/entitlements.mac.plist
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
@@ -47,8 +53,6 @@ mac:
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
   notarize: false
-dmg:
-  artifactName: ${name}-${version}.${ext}
 linux:
   target:
     - AppImage
