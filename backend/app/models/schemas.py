@@ -34,3 +34,38 @@ class GeneratedDocument(BaseModel):
     metadata: DocumentMetadata
     sections: List[RequirementSection]
     mermaid_diagrams: List[str] = []
+
+
+class MermaidRequest(BaseModel):
+    """Mermaid 代码请求模型"""
+    code: str
+
+# --- Models for Mermaid Image Generation ---
+
+class FeatureModel(BaseModel):
+    scenario: str
+    role: List[str]
+    process: List[str]
+
+class ChapterModel(BaseModel):
+    name: str
+    functions: List[str]
+    features: Optional[List[FeatureModel]] = None
+    # Allow other fields not explicitly defined
+    class Config:
+        extra = 'allow'
+
+class GenerateMermaidImagesRequest(BaseModel):
+    chapters: List[ChapterModel]
+
+
+class ProcessExcelRequest(BaseModel):
+    """处理 Excel 请求"""
+    file_path: str
+
+
+class GenerateWordRequest(BaseModel):
+    """生成 Word 请求"""
+    chapters: List[Dict[str, Any]]
+    image_mapping: Dict[str, str]
+    output_filename: Optional[str] = "需求说明书.docx"
