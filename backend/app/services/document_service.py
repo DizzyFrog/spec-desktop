@@ -39,16 +39,28 @@ class DocumentService:
             处理结果
         """
         try:
-            # 1. 解析 Excel
+            # 1. 验证 Excel
             parser = ExcelParser(file_path)
-            problems = parser.validate()
+            validation_result = parser.validate()
 
-            if problems:
-                return {"success": False, "error": "Excel 验证失败", "problems": problems}
+            # 如果验证失败，返回详细错误信息
+            if not validation_result["valid"]:
+                return {
+                    "success": False,
+                    "error": "Excel 文件验证失败",
+                    "validation": validation_result
+                }
 
+            # 如果有警告，也一并返回（但继续处理）
+            if validation_result["warnings"]:
+                print(f"⚠️  Excel 验证警告:")
+                for warning in validation_result["warnings"]:
+                    print(f"   - {warning['message']} ({warning['location']})")
+
+            # 2. 解析 Excel
             data = parser.parse()
 
-            # 2. 生成描述（使用 AI）
+            # 3. 生成描述（使用 AI）
             chapters = []
 
             for feature_name, feature_data in data.items():
@@ -92,10 +104,16 @@ class DocumentService:
                 chapters.append(chapter)
 
             # 返回结构化数据，等待前端生成图片后再生成 Word
-            return {
+            result = {
                 "success": True,
                 "chapters": chapters
             }
+
+            # 如果有警告，一并返回
+            if validation_result.get("warnings"):
+                result["warnings"] = validation_result["warnings"]
+
+            return result
 
         except Exception as e:
             return {

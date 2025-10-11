@@ -20,8 +20,10 @@ class AIService:
                 api_key=self.api_key,
                 base_url=self.base_url
             )
+            print(f"✅ AI 服务初始化成功 (模型: {self.model})")
         else:
             self.client = None
+            print("⚠️  AI API Key 未配置，将使用默认模板生成描述")
 
     def generate_description(self, feature_name: str, processes: list[str]) -> str:
         """
@@ -48,10 +50,15 @@ class AIService:
                     {'role': 'user', 'content': prompt}
                 ]
             )
-            return completion.choices[0].message.content
+            result = completion.choices[0].message.content
+            print(f"✅ AI 生成描述成功 ({feature_name})")
+            return result
         except Exception as e:
-            print(f"AI 调用失败: {e}")
-            return f"这是关于{feature_name}的功能模块，主要包含{len(processes)}个功能过程。"
+            print(f"❌ AI 调用失败: {e}")
+            print(f"   - 功能: {feature_name}")
+            print(f"   - API Key 长度: {len(self.api_key) if self.api_key else 0}")
+            print(f"   - 模型: {self.model}")
+            return f"这是关于{feature_name}的功能模块,主要包含{len(processes)}个功能过程。"
 
 
 # 全局实例

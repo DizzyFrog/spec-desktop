@@ -2,11 +2,16 @@
 FastAPI 主应用入口
 用于处理需求说明书生成的后端逻辑
 """
+# 第一步：加载环境变量（必须在所有导入之前）
+from dotenv import load_dotenv
+load_dotenv()
+
+# 第二步：导入其他模块
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
-from app.routers import upload, generate, auth, admin
+from app.routers import upload, generate, auth, admin, cache
 from app.database import init_db
 
 
@@ -48,6 +53,7 @@ app.include_router(upload.router, prefix="/api/upload", tags=["文件上传"])
 app.include_router(generate.router, prefix="/api/generate", tags=["文档生成"])
 app.include_router(auth.router, prefix="/api/auth", tags=["认证"])
 app.include_router(admin.router, prefix="/api/admin", tags=["管理员"])
+app.include_router(cache.router, prefix="/api/cache", tags=["缓存管理"])
 
 
 @app.get("/")

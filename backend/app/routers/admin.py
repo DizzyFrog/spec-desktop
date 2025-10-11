@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from app.database import get_db
 from app.models.user import User
 from app.services.auth_service import AuthService, get_current_user
+from app.services.cache_service import cache_service
 
 router = APIRouter()
 
@@ -30,6 +31,12 @@ class UpdateUserRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     new_password: str
+
+
+class ClearAllCacheRequest(BaseModel):
+    clear_cache: bool = True
+    clear_uploads: bool = True
+    clear_outputs: bool = True
 
 
 class UserResponse(BaseModel):
@@ -249,5 +256,94 @@ async def get_stats(
             "active_users": active_users,
             "admin_users": admin_users,
             "inactive_users": total_users - active_users
+        }
+    }
+
+
+@router.get("/cache/stats")
+async def get_all_cache_stats(
+    current_user: User = Depends(require_admin)
+) -> Dict[str, Any]:
+    """获取所有用户的缓存统计（仅管理员）"""
+    stats = cache_service.get_all_users_cache_stats()
+
+    # 计算总计
+    total_cache_size = sum(s["cache_size"] for s in stats)
+    total_upload_size = sum(s["upload_size"] for s in stats)
+    total_output_size = sum(s["output_size"] for s in stats)
+    total_size = sum(s["total_size"] for s in stats)
+    total_files = sum(s["total_files"] for s in stats)
+
+    return {
+        "code": 0,
+        "data": {
+            "users": stats,
+            "summary": {
+                "total_users": len(stats),
+                "total_cache_size": total_cache_size,
+                "total_upload_size": total_upload_size,
+                "total_output_size": total_output_size,
+                "total_size": total_size,
+                "total_files": total_files,
+                "total_size_mb": round(total_size / 1024 / 1024, 2)
+            }
+        }
+    }
+
+
+@router.post("/cache/clear-all")
+async def clear_all_cache(
+    request: ClearAllCacheRequest,
+    current_user: User = Depends(require_admin)
+) -> Dict[str, Any]:
+    """清理所有用户的缓存（仅管理员）"""
+    result = cache_service.clear_all_users_cache(
+        clear_cache=request.clear_cache,
+        clear_uploads=request.clear_uploads,
+        clear_outputs=request.clear_outputs
+    )
+
+    print(f"🗑️  管理员 {current_user.username} 清理了所有用户缓存: {result['message']}")
+
+    return {
+        "code": 0,
+        "data": {
+            "success": result["success"],
+            "users_cleared": result["users_cleared"],
+            "message": result["message"]
+        }
+    }
+
+
+@router.post("/cache/clear-user/{user_id}")
+async def clear_user_cache(
+    user_id: int,
+    request: ClearAllCacheRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+) -> Dict[str, Any]:
+    """清理指定用户的缓存（仅管理员）"""
+    # 验证用户是否存在
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="用户不存在")
+
+    result = cache_service.clear_user_cache(
+        user_id,
+        clear_cache=request.clear_cache,
+        clear_uploads=request.clear_uploads,
+        clear_outputs=request.clear_outputs
+    )
+
+    print(f"🗑️  管理员 {current_user.username} 清理了用户 {user.username} (ID: {user_id}) 的缓存")
+
+    return {
+        "code": 0,
+        "data": {
+            "success": result["success"],
+            "user_id": user_id,
+            "username": user.username,
+            "cleared": result["cleared"],
+            "message": result["message"]
         }
     }
